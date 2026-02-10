@@ -8,6 +8,7 @@
     }
 
     function renderMarkdown(text) {
+        console.log(text)
         return marked(text, {
             breaks: true,
             gfm: true

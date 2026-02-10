@@ -19,26 +19,59 @@
     }
 </script>
 
-<div class="input-container">
-    <input
-            type="text"
-            placeholder="Pitaj me!"
-            bind:value={inputMessage}
-            on:keypress={handleKeyPress}
-            class="message-input"
-    />
-    <button class="send-btn" on:click={sendMessage} aria-label="Send message">
-        <svg viewBox="0 0 24 24" fill="currentColor">
-            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-        </svg>
-    </button>
+<div class="bottom-container">
+    <span class="warning-text">
+        Umjetna inteligencija može dati krive informacije.
+    </span>
+    <div class="input-container">
+        <div class="input-holder">
+            <input
+                    type="text"
+                    placeholder="Pitaj me!"
+                    bind:value={inputMessage}
+                    on:keypress={handleKeyPress}
+                    class="message-input"
+            />
+        </div>
+        <button class="send-btn" on:click={sendMessage} aria-label="Send message">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+            </svg>
+        </button>
+    </div>
 </div>
 
 <style>
-    .input-container {
-        padding: 16px;
-        background: white;
+    .bottom-container {
         border-top: 1px solid #e5e7eb;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        /*align-items: center;*/
+    }
+
+    .warning-text {
+        color: rgba(0, 0, 0, 0.5);
+        text-align: center;
+        font-size: 10px;
+        align-self: center;
+        margin-top: 15px;
+        margin-bottom: 15px;
+    }
+
+    .input-holder {
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        flex: 1;
+    }
+
+    .input-container {
+        padding-left: 15px;
+        padding-right: 15px;
+        padding-bottom: 16px;
+        background: white;
         display: flex;
         gap: 8px;
     }
@@ -71,6 +104,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        align-self: end;
         transition: all 0.2s;
         flex-shrink: 0;
     }

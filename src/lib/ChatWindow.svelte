@@ -11,17 +11,13 @@
 
     const dispatch = createEventDispatcher();
 
-    function handleClose() {
-        dispatch('close');
-    }
-
     function handleSendMessage(event: CustomEvent<string>) {
         dispatch('sendMessage', event.detail);
     }
 </script>
 
 <div class="chat-window">
-    <ChatHeader on:close={handleClose} />
+    <ChatHeader on:close on:clear />
     <MessageList {messages} />
     <ChatInput on:sendMessage={handleSendMessage} />
 </div>
@@ -33,7 +29,7 @@
         right: 0;
         width: 380px;
         max-width: calc(100vw - 40px);
-        height: 550px;
+        height: 580px;
         max-height: calc(100vh - 120px);
         background: white;
         border-radius: 16px;

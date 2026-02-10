@@ -1,49 +1,139 @@
 <svelte:options customElement="petagpt-client" />
 
 <script lang="ts">
-    import FloatingButton from './FloatingButton.svelte';
-    import ChatWindow from './ChatWindow.svelte';
+    import FloatingButton from "./FloatingButton.svelte";
+    import ChatWindow from "./ChatWindow.svelte";
+    import { onMount } from "svelte";
 
-    type Sender = 'user' | 'bot';
-    type ChatMessage = { text: string; sender: Sender; time: Date; pending?: boolean };
+    const API_URL = "https://chatbot.petagimnazija.hr";
+
+    type Sender = "user" | "assistant";
+    type ChatMessage = {
+        text: string;
+        sender: Sender;
+        time: Date;
+        pending?: boolean;
+    };
 
     let isOpen = false;
     let messages: ChatMessage[] = [
-        { text: "Dobar dan! Kako vam mogu pomoći?", sender: "bot", time: new Date() }
+        {
+            text: "Dobar dan! Kako vam mogu pomoći?",
+            sender: "assistant",
+            time: new Date(),
+        },
     ];
+    let conversationId: string | null;
+
+    onMount(async () => {
+        conversationId = localStorage.getItem("petagpt_conversation_id");
+        if (!conversationId) {
+            conversationId = crypto.randomUUID();
+            localStorage.setItem("petagpt_conversation_id", conversationId);
+        }
+
+        try {
+            const resp = await fetch(`${API_URL}/chat/messages/${conversationId}`, {
+                headers: {
+                    "Content-Type": "application/json"
+                },
+            });
+
+            const respBody = await resp.json();
+            if (!respBody?.messages) {
+                return;
+            }
+
+            for (const msg of respBody.messages) {
+
+                messages.push({
+                    text: msg.content,
+                    sender: msg.role,
+                    time: new Date(Date.parse(msg.created_at)),
+                });
+            }
+        } catch (err: unknown) {
+            console.error("Failed to retrieve messages:", err);
+        }
+    });
 
     function toggleChat() {
+        console.log(messages)
         isOpen = !isOpen;
+        if (isOpen) {
+            createConversation();
+        }
+    }
+
+    function clearConversation() {
+        localStorage.removeItem("petagpt_conversation_id");
+        messages = [
+            {
+                text: "Dobar dan! Kako vam mogu pomoći?",
+                sender: "assistant",
+                time: new Date(),
+            },
+        ];
+    }
+
+    async function createConversation() {
+        try {
+            const resp = await fetch(`${API_URL}/chat/create`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    session_id: conversationId,
+                }),
+            });
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            // Replace the placeholder with an error message
+            messages = [
+                ...messages.slice(0, -1),
+                { text: `Error: ${msg}`, sender: "assistant", time: new Date() },
+            ];
+            console.error("Failed to fetch /chat:", err);
+        }
     }
 
     async function handleSendMessage(event: CustomEvent<string>) {
+        console.log("Hello")
         const messageText = event.detail;
+        console.log(messageText)
 
         // Add user message
-        const userMessage: ChatMessage = { text: messageText, sender: "user", time: new Date() };
-        messages = [
-            ...messages,
-            userMessage
-        ];
+        const userMessage: ChatMessage = {
+            text: messageText,
+            sender: "user",
+            time: new Date(),
+        };
+        messages = [...messages, userMessage];
 
         // Build OAI-compatible messages array (exclude any pending placeholders)
-        const oaiMessages = messages.map(m => ({
-            role: m.sender === 'user' ? 'user' : 'assistant',
-            content: m.text
-        }));
+        // const oaiMessages = messages.map((m) => ({
+        //     role: m.sender === "user" ? "user" : "assistant",
+        //     content: m.text,
+        // }));
 
         // Add a temporary placeholder bot message while we await the server response
-        const placeholder: ChatMessage = { text: '...', sender: 'bot', time: new Date(), pending: true };
-        messages = [
-            ...messages,
-            placeholder
-        ];
+        const placeholder: ChatMessage = {
+            text: "...",
+            sender: "assistant",
+            time: new Date(),
+            pending: true,
+        };
+        messages = [...messages, placeholder];
+
+        console.log(messageText)
 
         try {
-            const resp = await fetch('http://localhost:7030/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ messages: oaiMessages })
+            const resp = await fetch(`${API_URL}/chat/send`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    session_id: conversationId,
+                    user_message: messageText,
+                }),
             });
 
             if (!resp.ok) {
@@ -51,23 +141,24 @@
             }
 
             const data = await resp.json();
-            const botText = typeof data === 'object' && data !== null && 'response' in data
-                ? String((data as any).response)
-                : String(data);
+            const botText =
+                typeof data === "object" && data !== null && "response" in data
+                    ? String((data as any).response)
+                    : String(data);
 
             // Replace the placeholder with the real bot response
             messages = [
                 ...messages.slice(0, -1),
-                { text: botText, sender: 'bot', time: new Date() }
+                { text: botText, sender: "assistant", time: new Date() },
             ];
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : String(err);
             // Replace the placeholder with an error message
             messages = [
                 ...messages.slice(0, -1),
-                { text: `Error: ${msg}`, sender: 'bot', time: new Date() }
+                { text: `Error: ${msg}`, sender: "assistant", time: new Date() },
             ];
-            console.error('Failed to fetch /chat:', err);
+            console.error("Failed to fetch /chat:", err);
         }
     }
 </script>
@@ -75,9 +166,10 @@
 <div class="chatbot-container">
     {#if isOpen}
         <ChatWindow
-                {messages}
-                on:close={toggleChat}
-                on:sendMessage={handleSendMessage}
+            {messages}
+            on:close={toggleChat}
+            on:clear={clearConversation}
+            on:sendMessage={handleSendMessage}
         />
     {/if}
 
@@ -90,13 +182,17 @@
         bottom: 20px;
         right: 20px;
         z-index: 1000;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+            Oxygen, Ubuntu, Cantarell, sans-serif;
     }
 
-    @media (max-width: 480px) {
+    @media (max-width: 576px) {
         .chatbot-container {
-            bottom: 10px;
-            right: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+/*            bottom: 25%;
+            right: 25%;*/
         }
     }
 </style>
