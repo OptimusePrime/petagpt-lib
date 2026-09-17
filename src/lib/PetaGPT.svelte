@@ -45,13 +45,13 @@
             }
 
             for (const msg of respBody.messages) {
-
                 messages.push({
                     text: msg.content,
                     sender: msg.role,
                     time: new Date(Date.parse(msg.created_at)),
                 });
             }
+            messages = messages
         } catch (err: unknown) {
             console.error("Failed to retrieve messages:", err);
         }
@@ -134,9 +134,64 @@
                     session_id: conversationId,
                     user_message: messageText,
                 }),
+                signal: AbortSignal.timeout(3 * 60 * 1000)
             });
 
-            if (!resp.ok) {
+            if (!resp.body) {
+                throw new Error("Internal server error.");
+            }
+
+            const reader = resp.body.getReader();
+            const decoder = new TextDecoder("utf-8");
+
+
+            while (true) {
+                const { done, value } = await reader.read();
+
+                if (done) break;
+
+                console.log(`Reader done: ${done}`)
+
+                const chunk = decoder.decode(value, { stream: true });
+
+                const lines = chunk.split("\n");
+
+                for (const line of lines) {
+                    if (line.startsWith("data:")) {
+                        const data = line.slice(5);
+                        console.log(`Data: ${data}`)
+
+                        if (data === "[DONE]") {
+                            return;
+                        }
+
+                        try {
+                            const parsed = JSON.parse(data);
+                            const text = parsed.delta || "";
+
+                            if(messages[messages.length - 1].pending) {
+                                messages[messages.length - 1].text = "";
+                                messages[messages.length - 1].pending = false;
+                            }
+
+                            console.log(`New text: ${text}`);
+
+
+                            messages[messages.length - 1].text += text;
+                            messages = messages;
+
+                        } catch (e) {
+                            messages = [
+                                ...messages.slice(0, -1),
+                                { text: `An unexpected error occurred.`, sender: "assistant", time: new Date() },
+                            ];
+                            console.error("Failed to fetch /chat:", e);
+                        }
+                    }
+                }
+            }
+
+/*            if (!resp.ok) {
                 throw new Error(`Server responded with ${resp.status}`);
             }
 
@@ -150,7 +205,7 @@
             messages = [
                 ...messages.slice(0, -1),
                 { text: botText, sender: "assistant", time: new Date() },
-            ];
+            ];*/
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : String(err);
             // Replace the placeholder with an error message
