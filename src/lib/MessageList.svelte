@@ -1,22 +1,28 @@
 <script lang="ts">
     import Message from './Message.svelte';
-    import { afterUpdate, onMount } from 'svelte';
+    import { onMount } from 'svelte';
+
+    let {
+        messages = [],
+        ref = $bindable<HTMLDivElement>(),
+    }: { messages?: ChatMessage[], ref?: HTMLDivElement } = $props();
+
 
     type Sender = 'user' | 'bot';
     export type ChatMessage = { text: string; sender: Sender; time: Date; pending?: boolean };
     // let messagesContainer;
-    export let messages: ChatMessage[] = [];
+    // export let messages: ChatMessage[] = [];
 
-    let messagesContainer: HTMLDivElement | null = null;
+    // let messagesContainer: HTMLDivElement | null = null;
 
     onMount(() => {
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        ref.scrollTop = ref.scrollHeight;
 
     });
 
 </script>
 
-<div class="messages-container" bind:this={messagesContainer}>
+<div class="messages-container" bind:this={ref}>
     {#each messages as message}
         <Message {message} />
     {/each}

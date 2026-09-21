@@ -25,6 +25,8 @@
     ];
     let conversationId: string | null;
 
+    let messageListElement: HTMLDivElement;
+
     onMount(async () => {
         await createConversation();
 
@@ -185,6 +187,7 @@
 
                             messages[messages.length - 1].text += text;
                             messages = messages;
+                            messageListElement.scrollTop = messageListElement.scrollHeight;
 
                         } catch (e) {
                             messages = [
@@ -231,6 +234,7 @@
             on:close={toggleChat}
             on:clear={async () => await clearConversation()}
             on:sendMessage={handleSendMessage}
+            bind:messageListEl={messageListElement}
         />
     {/if}
 

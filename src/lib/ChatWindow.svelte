@@ -4,10 +4,12 @@
     import MessageList from './MessageList.svelte';
     import ChatInput from './ChatInput.svelte';
 
+    let { messageListEl = $bindable<HTMLDivElement>(), messages = [] }: { messageListEl?: HTMLDivElement, messages: ChatMessage[] } = $props();
+
     type Sender = 'user' | 'bot';
     export type ChatMessage = { text: string; sender: Sender; time: Date; pending?: boolean };
 
-    export let messages: ChatMessage[] = [];
+    // export let messages: ChatMessage[] = [];
 
     const dispatch = createEventDispatcher();
 
@@ -18,7 +20,7 @@
 
 <div class="chat-window">
     <ChatHeader on:close on:clear />
-    <MessageList {messages} />
+    <MessageList bind:ref={messageListEl} {messages} />
     <ChatInput on:sendMessage={handleSendMessage} />
 </div>
 
