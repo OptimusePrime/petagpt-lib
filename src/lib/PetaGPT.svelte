@@ -26,11 +26,7 @@
     let conversationId: string | null;
 
     onMount(async () => {
-        conversationId = localStorage.getItem("petagpt_conversation_id");
-        if (!conversationId) {
-            conversationId = crypto.randomUUID();
-            localStorage.setItem("petagpt_conversation_id", conversationId);
-        }
+        await createConversation();
 
         try {
             const resp = await fetch(`${API_URL}/chat/messages/${conversationId}`, {
@@ -65,8 +61,11 @@
         }
     }
 
-    function clearConversation() {
+    async function clearConversation() {
+        await createConversation();
+
         localStorage.removeItem("petagpt_conversation_id");
+
         messages = [
             {
                 text: "Dobar dan! Kako vam mogu pomoći?",
@@ -77,6 +76,13 @@
     }
 
     async function createConversation() {
+        localStorage.removeItem("petagpt_conversation_id")
+        conversationId = localStorage.getItem("petagpt_conversation_id");
+        if (!conversationId) {
+            conversationId = crypto.randomUUID();
+            localStorage.setItem("petagpt_conversation_id", conversationId);
+        }
+
         try {
             const resp = await fetch(`${API_URL}/chat/create`, {
                 method: "POST",
@@ -223,7 +229,7 @@
         <ChatWindow
             {messages}
             on:close={toggleChat}
-            on:clear={clearConversation}
+            on:clear={async () => await clearConversation()}
             on:sendMessage={handleSendMessage}
         />
     {/if}
